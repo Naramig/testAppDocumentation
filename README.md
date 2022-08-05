@@ -4,15 +4,15 @@
 
 ## Сервисы
 
-### Сервис пользователей [github](#https://github.com/Naramig/users-api) 
+### Сервис пользователей [github](https://github.com/Naramig/users-api) 
 Сервис имеет регистрацию и авторизацию (JWT). Также есть возможность удалить и изменить созданные данные.
 При запуске сервиса, создается учетка админа. Админ имеет полный CRUD пользователей, а также возможность давать права админа другим пользователям.
 При создании нового пользователя создается сообщение в Kafka на отправку приветственного письма.
 
-### Сервис записей [github](#https://github.com/Naramig/notion-api)
+### Сервис записей [github](https://github.com/Naramig/notion-api)
 Сервис имеет CRUD заметок. Авторизация через JWT
 
-### Сервис рассылки E-mail уведомлений [github](#https://github.com/Naramig/email-api)
+### Сервис рассылки E-mail уведомлений [github](https://github.com/Naramig/email-api)
 Сервис обрабатывает сообщения из Kafka и отправляет email.
 
 ## Local run
