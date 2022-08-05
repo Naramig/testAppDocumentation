@@ -1,0 +1,126 @@
+version: "3.7"
+
+networks:
+  middleware:
+    ipam:
+      config:
+        - subnet: 173.20.0.0/24
+
+services:
+  usersDb:
+    image: postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: user
+      POSTGRES_DB: users
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./userPg/:/var/lib/postgresql/data/
+    networks:
+      middleware:
+        ipv4_address: 173.20.0.2
+
+  notionDb:
+    image: postgres
+    restart: always
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: user
+      POSTGRES_DB: notions
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./notionPg/:/var/lib/postgresql/data/
+    networks:
+      middleware:
+        ipv4_address: 173.20.0.7
+
+  zookeeper:
+    image: "bitnami/zookeeper:latest"
+    container_name: "zookeeper"
+    ports:
+      - "2181:2181"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      middleware:
+        ipv4_address: 173.20.0.3
+
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: "kafka"
+    volumes:
+      - ./kafka/:/etc/kafka/
+    environment:
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://173.20.0.4:9092
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    networks:
+      middleware:
+        ipv4_address: 173.20.0.4
+    healthcheck:
+      test: ["CMD", "bash", "-c", "unset" , "JMX_PORT" ,";" ,"kafka-topics.sh","--zookeeper","zookeeper:2181","--list"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+  users-api:
+    image:  naramig/users-api:latest
+    container_name: "users-api"
+    environment:
+      - TOKEN_SECRET=2f952c6c-13f0-11ed-861d-0242ac120002
+      - PORT=3000
+      - KAFKA_URL=kafka:9092
+      - HOST=usersDb
+      - USER=user
+      - PASSWORD=password
+      - DB=users
+      - KAFKA_TOPIC=EMAILS
+      - KAFKA_CLIENT_ID=emails
+      - KAFKAJS_NO_PARTITIONER_WARNING=1
+    ports:
+      - "3000:3000"
+    networks:
+      middleware:
+        ipv4_address: 173.20.0.5
+    depends_on:
+      kafka:
+        condition: service_healthy
+  notion-api:
+    image: naramig/notion-api:latest
+    container_name: "notion-api"
+    environment:
+      - TOKEN_SECRET=2f952c6c-13f0-11ed-861d-0242ac120002
+      - PORT=3012
+      - HOST=notionDb
+      - USER=user
+      - PASSWORD=password
+      - DB=notions
+    ports:
+      - "3012:3012"
+    networks:
+      middleware:
+        ipv4_address: 173.20.0.6
+  email-api:
+    image: naramig/email-api:latest
+    container_name: "email-api"
+    environment:
+      - SMTP_USER=testapp1231@mail.ru
+      - SMTP_PASS=wSXYRN0VcakrJkwu4gbF
+      - KAFKA_URL=kafka:9092
+      - KAFKA_CLIENT_ID=emails
+      - KAFKA_CLIENT_TOPIC=EMAILS
+    networks:
+      middleware:
+        ipv4_address: 173.20.0.8
+    depends_on:
+      kafka:
+        condition: service_healthy
